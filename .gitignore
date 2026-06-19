@@ -1,0 +1,8 @@
+# Ignorar estados dinamicos, historicos y logs
+netwatch/data/status.json
+netwatch/data/downtimes.json
+netwatch/data/history/
+netwatch/data/tracert/
+.gemini/
+.agents/
+*.log

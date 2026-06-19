@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetWatch — Dashboard</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════ ALERT BANNER ═══════════════ -->
+<div class="alert-banner" id="alertBanner">
+  <div class="alert-icon">⚠️</div>
+  <div class="alert-content">
+    <span class="alert-title">PROBLEMA DETECTADO EN LA RED</span>
+    <span class="alert-detail" id="alertDetail"></span>
+  </div>
+  <button class="alert-close" onclick="document.getElementById('alertBanner').classList.remove('visible')">✕</button>
+</div>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-icon">📡</div>
+    <div class="logo-text">Net<span>Watch</span> <small>VTSA</small></div>
+  </div>
+  <div class="header-info">
+    <div class="internet-status" id="internetStatus">
+      <span class="status-dot-mini offline"></span>
+      Internet: <span class="status-lat">—</span>
+    </div>
+    <div style="text-align: right">
+      <div class="last-update">Actualizado: <span id="lastUpdate">—</span></div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" onclick="refreshNow()" title="Actualizar ahora">↻</button>
+    <button class="btn-secondary" onclick="openDowntimesModal()">🗓️ Historial de Caídas</button>
+    <button class="btn-secondary" onclick="openAddModal()">＋ Agregar IP</button>
+    <button class="btn-secondary" onclick="openBulkModal()">⊞ Carga masiva</button>
+    <button class="btn-secondary danger" onclick="window.location='/api/logout'">Salir</button>
+  </div>
+</header>
+
+<!-- ═══════════════ STATS BAR ═══════════════ -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-num" id="statTotal">—</span>
+    <span class="stat-label">Total</span>
+  </div>
+  <div class="stat-item online">
+    <span class="stat-num" id="statOnline">—</span>
+    <span class="stat-label">En línea</span>
+  </div>
+  <div class="stat-item warning">
+    <span class="stat-num" id="statWarning">—</span>
+    <span class="stat-label">Con pérdida</span>
+  </div>
+  <div class="stat-item offline">
+    <span class="stat-num" id="statOffline">—</span>
+    <span class="stat-label">Sin respuesta</span>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN GRID ═══════════════ -->
+<main class="main-content">
+  <div class="host-grid" id="hostGrid">
+    <div class="loading-placeholder">
+      <div class="spinner"></div>
+      <p>Cargando estado de la red...</p>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════ MODAL: AGREGAR HOST ═══════════════ -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)closeModal('addModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Agregar IP a monitoreo</h2>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Dirección IP *</label>
+        <input type="text" id="addIp" placeholder="192.168.40.100" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Nombre / Descripción</label>
+        <input type="text" id="addName" placeholder="Servidor de Producción" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Grupo</label>
+        <input type="text" id="addGroup" placeholder="Servidores" class="form-input" list="groupList"/>
+        <datalist id="groupList">
+          <option value="Infraestructura"/>
+          <option value="Servidores"/>
+          <option value="Internet"/>
+          <option value="General"/>
+          <option value="Produccion"/>
+          <option value="Oficinas"/>
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label>Acceso a Internet</label>
+        <select id="addInternet" class="form-input">
+          <option value="auto">Auto (Detección por Subred)</option>
+          <option value="true">Sí (Forzar con Internet)</option>
+          <option value="false">No (Forzar sin Internet)</option>
+        </select>
+      </div>
+      <div class="modal-hint">Los campos con * son obligatorios</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('addModal')">Cancelar</button>
+      <button class="btn-primary" onclick="submitAddHost()">Agregar</button>
+    </div>
+    <div class="modal-msg" id="addMsg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: CARGA MASIVA ═══════════════ -->
+<div class="modal-overlay" id="bulkModal" onclick="if(event.target===this)closeModal('bulkModal')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>Carga masiva de IPs</h2>
+      <button class="modal-close" onclick="closeModal('bulkModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint" style="margin-bottom:12px">Formatos aceptados (uno por línea):</p>
+      <pre class="code-hint">192.168.40.10
+192.168.40.11, Servidor Web, Produccion
+192.168.40.12,PC de Juan,Oficinas</pre>
+      <div class="form-group" style="margin-top:16px">
+        <label>IPs a agregar</label>
+        <textarea id="bulkText" class="form-input form-textarea" placeholder="Pegá aquí tu lista de IPs..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Grupo por defecto (si no se especifica en cada línea)</label>
+        <input type="text" id="bulkGroup" placeholder="General" class="form-input"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('bulkModal')">Cancelar</button>
+      <button class="btn-primary" onclick="submitBulk()">Importar IPs</button>
+    </div>
+    <div class="modal-msg" id="bulkMsg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: TRACERT ═══════════════ -->
+<div class="modal-overlay" id="tracertModal" onclick="if(event.target===this)closeModal('tracertModal')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2 id="tracertTitle">Diagnóstico de ruta</h2>
+      <button class="modal-close" onclick="closeModal('tracertModal')">✕</button>
+    </div>
+    <div class="modal-body" id="tracertBody">
+      <div style="text-align:center;padding:40px">
+        <div class="spinner"></div><p style="margin-top:12px;color:#8892a4">Ejecutando tracert...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: GESTIONAR HOSTS ═══════════════ -->
+<div class="modal-overlay" id="manageModal" onclick="if(event.target===this)closeModal('manageModal')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>Gestionar hosts monitoreados</h2>
+      <button class="modal-close" onclick="closeModal('manageModal')">✕</button>
+    </div>
+    <div class="modal-body" id="manageBody"></div>
+  </div>
+<!-- ═══════════════ MODAL: HISTORIAL DE CAIDAS ═══════════════ -->
+<div class="modal-overlay" id="downtimesModal" onclick="if(event.target===this)closeModal('downtimesModal')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>Historial de Caídas de Conexión</h2>
+      <button class="modal-close" onclick="closeModal('downtimesModal')">✕</button>
+    </div>
+    <div class="modal-body" id="downtimesBody" style="max-height:400px;overflow-y:auto">
+      <div style="text-align:center;padding:20px;color:var(--text-3)">Cargando historial...</div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+﻿[
+    {
+        "ip":  "192.168.41.44",
+        "name":  "FortiGate Gateway",
+        "group":  "Infraestructura",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.14",
+        "name":  "DC-VTSA-01 (DNS/DHCP)",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.40.7",
+        "name":  "DC-VTSA-02 (DNS/DHCP)",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.40.6",
+        "name":  "Servidor Critico 1",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.12",
+        "name":  "Servidor Critico 2",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.40.104",
+        "name":  "Servidor Critico 3",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.26",
+        "name":  "Servidor Critico 4",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.40",
+        "name":  "Servidor 192.168.41.40",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "8.8.8.8",
+        "name":  "Google DNS",
+        "group":  "Internet",
+        "enabled":  true
+    },
+    {
+        "ip":  "1.1.1.1",
+        "name":  "Cloudflare DNS",
+        "group":  "Internet",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.27",
+        "name":  "Mario Guillen",
+        "group":  "Maquinas",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.40.4",
+        "name":  "host_virtuales",
+        "group":  "Servidores",
+        "enabled":  true
+    },
+    {
+        "ip":  "192.168.41.161",
+        "name":  "Guillermo Erbetta",
+        "group":  "Maquinas",
+        "enabled":  true
+    }
+]
