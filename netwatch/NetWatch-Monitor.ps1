@@ -25,13 +25,57 @@ if (Test-Path $statusFile) {
 }
 
 # Funciones de downtime
-function Start-Downtime($ip, $name, $time) {
-    $events = @()
-    if (Test-Path $downtimesFile) {
-        try { $events = @(Get-Content $downtimesFile -Raw | ConvertFrom-Json) } catch {}
+function Get-Downtimes {
+    if (-not (Test-Path $downtimesFile)) { return @() }
+    try {
+        $raw = Get-Content $downtimesFile -Raw -Encoding UTF8
+        if (-not $raw -or $raw.Trim() -eq "") { return @() }
+        $parsed = $raw | ConvertFrom-Json
+        
+        $flatten = {
+            param($obj)
+            if ($obj -is [Array]) {
+                $res = @()
+                foreach ($item in $obj) {
+                    $res += & $flatten $item
+                }
+                return $res
+            }
+            if ($obj.PSObject.Properties["value"]) {
+                return & $flatten $obj.value
+            }
+            return $obj
+        }
+        
+        $flat = & $flatten $parsed
+        
+        $cleanEvents = @()
+        foreach ($e in $flat) {
+            if ($e -and $e.ip -and $e.downTime) {
+                if ($e.ip -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
+                    $cleanEvents += [PSCustomObject]@{
+                        ip       = [string]$e.ip
+                        name     = [string]$e.name
+                        downTime = [string]$e.downTime
+                        upTime   = if ($e.upTime) { [string]$e.upTime } else { $null }
+                        duration = if ($e.duration -ne $null) { [int]$e.duration } else { $null }
+                    }
+                }
+            }
+        }
+        return @($cleanEvents)
+    } catch {
+        return @()
     }
-    if ($events.Count -eq 0 -and $events -ne $null) { $events = @($events) }
+}
 
+function Save-Downtimes([object[]]$events) {
+    ConvertTo-Json -InputObject @($events) -Depth 5 | Set-Content $downtimesFile -Encoding UTF8
+}
+
+function Start-Downtime($ip, $name, $time) {
+    $events = Get-Downtimes
+    
     $events += [PSCustomObject]@{
         ip        = $ip
         name      = $name
@@ -39,29 +83,29 @@ function Start-Downtime($ip, $name, $time) {
         upTime    = $null
         duration  = $null
     }
-    if ($events.Count -gt 100) { $events = $events[($events.Count-100)..($events.Count-1)] }
-    $events | ConvertTo-Json -Depth 5 | Set-Content $downtimesFile -Encoding UTF8
+    
+    if ($events.Count -gt 100) {
+        $events = $events[($events.Count-100)..($events.Count-1)]
+    }
+    
+    Save-Downtimes $events
 }
 
 function End-Downtime($ip, $time) {
-    if (Test-Path $downtimesFile) {
-        try {
-            $events = @(Get-Content $downtimesFile -Raw | ConvertFrom-Json)
-            if ($events.Count -eq 0 -and $events -ne $null) { $events = @($events) }
+    $events = Get-Downtimes
+    if ($events.Count -eq 0) { return }
 
-            $openEvent = $events | Where-Object { $_.ip -eq $ip -and -not $_.upTime } | Select-Object -Last 1
-            if ($openEvent) {
-                $openEvent.upTime = $time
-                try {
-                    $dt1 = [DateTime]::ParseExact($openEvent.downTime, "yyyy-MM-ddTHH:mm:ss", $null)
-                    $dt2 = [DateTime]::ParseExact($time, "yyyy-MM-ddTHH:mm:ss", $null)
-                    $openEvent.duration = [math]::Round(($dt2 - $dt1).TotalSeconds, 0)
-                } catch {
-                    $openEvent.duration = 0
-                }
-                $events | ConvertTo-Json -Depth 5 | Set-Content $downtimesFile -Encoding UTF8
-            }
-        } catch {}
+    $openEvent = $events | Where-Object { $_.ip -eq $ip -and ($_.upTime -eq $null -or $_.upTime -eq "") } | Select-Object -Last 1
+    if ($openEvent) {
+        $openEvent.upTime = $time
+        try {
+            $dt1 = [DateTime]::ParseExact($openEvent.downTime, "yyyy-MM-ddTHH:mm:ss", $null)
+            $dt2 = [DateTime]::ParseExact($time, "yyyy-MM-ddTHH:mm:ss", $null)
+            $openEvent.duration = [math]::Round(($dt2 - $dt1).TotalSeconds, 0)
+        } catch {
+            $openEvent.duration = 0
+        }
+        Save-Downtimes $events
     }
 }
 

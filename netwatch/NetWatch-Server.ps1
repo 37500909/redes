@@ -100,6 +100,51 @@ function Save-Hosts([object[]]$h) {
     ConvertTo-Json -InputObject @($h) -Depth 5 | Set-Content (Join-Path $dataPath "hosts.json") -Encoding UTF8
 }
 
+function Get-Downtimes {
+    $f = Join-Path $dataPath "downtimes.json"
+    if (-not (Test-Path $f)) { return @() }
+    try {
+        $raw = Get-Content $f -Raw -Encoding UTF8
+        if (-not $raw -or $raw.Trim() -eq "") { return @() }
+        $parsed = $raw | ConvertFrom-Json
+        
+        $flatten = {
+            param($obj)
+            if ($obj -is [Array]) {
+                $res = @()
+                foreach ($item in $obj) {
+                    $res += & $flatten $item
+                }
+                return $res
+            }
+            if ($obj.PSObject.Properties["value"]) {
+                return & $flatten $obj.value
+            }
+            return $obj
+        }
+        
+        $flat = & $flatten $parsed
+        
+        $cleanEvents = @()
+        foreach ($e in $flat) {
+            if ($e -and $e.ip -and $e.downTime) {
+                if ($e.ip -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
+                    $cleanEvents += [PSCustomObject]@{
+                        ip       = [string]$e.ip
+                        name     = [string]$e.name
+                        downTime = [string]$e.downTime
+                        upTime   = if ($e.upTime) { [string]$e.upTime } else { $null }
+                        duration = if ($e.duration -ne $null) { [int]$e.duration } else { $null }
+                    }
+                }
+            }
+        }
+        return @($cleanEvents)
+    } catch {
+        return @()
+    }
+}
+
 # Archivos accesibles sin auth (solo la pagina de login)
 $publicFiles = @("login.html", "favicon.ico")
 
@@ -180,9 +225,12 @@ while ($listener.IsListening) {
                 }
 
                 "/api/downtimes" {
-                    $f = Join-Path $dataPath "downtimes.json"
-                    if (Test-Path $f) { Send-Json $resp (Get-Content $f -Raw) }
-                    else              { Send-Json $resp '[]' }
+                    try {
+                        $events = Get-Downtimes
+                        Send-Json $resp $events
+                    } catch {
+                        Send-Json $resp '[]'
+                    }
                 }
 
                 "/api/hosts" {

@@ -664,7 +664,20 @@ function renderDowntimes(data) {
   sorted.forEach(e => {
     const isOngoing = !e.upTime;
     const ongoingHtml = isOngoing ? '<span class="status-badge offline" style="padding:2px 8px; display:inline-flex; font-size:10px">EN CURSO ⚠️</span>' : escHtml(formatDateTime(e.upTime));
-    const durationHtml = isOngoing ? '—' : formatDuration(e.duration);
+    
+    let durationHtml = '';
+    if (isOngoing) {
+      try {
+        const downDate = new Date(e.downTime.replace('T', ' '));
+        const now = new Date();
+        const elapsedSecs = Math.max(0, Math.floor((now - downDate) / 1000));
+        durationHtml = `<span style="color:var(--red); font-weight:700">Hace ${formatDuration(elapsedSecs)}</span>`;
+      } catch (err) {
+        durationHtml = '—';
+      }
+    } else {
+      durationHtml = formatDuration(e.duration);
+    }
 
     html += `
       <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size:13px; color: var(--text-2); ${isOngoing ? 'background:rgba(255,59,92,0.03)' : ''}">

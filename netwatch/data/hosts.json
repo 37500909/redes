@@ -51,13 +51,15 @@
         "ip":  "8.8.8.8",
         "name":  "Google DNS",
         "group":  "Internet",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "1.1.1.1",
         "name":  "Cloudflare DNS",
         "group":  "Internet",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.41.27",
@@ -75,6 +77,39 @@
         "ip":  "192.168.41.161",
         "name":  "Guillermo Erbetta",
         "group":  "Maquinas",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
+    },
+    {
+        "ip":  "192.168.41.230",
+        "name":  "maquina_cascara",
+        "group":  "Maquinas",
+        "enabled":  true,
+        "downtimeCount":  1,
+        "internetAccess":  null
+    },
+    {
+        "ip":  "192.168.40.102",
+        "name":  "pcs002a-pc",
+        "group":  "Maquinas",
+        "enabled":  true,
+        "downtimeCount":  0,
+        "internetAccess":  null
+    },
+    {
+        "ip":  "192.168.40.85",
+        "name":  "Matias Salas",
+        "group":  "Maquinas",
+        "enabled":  true,
+        "downtimeCount":  0,
+        "internetAccess":  null
+    },
+    {
+        "ip":  "192.168.40.116",
+        "name":  "Pasante_mantenimiento",
+        "group":  "Maquinas",
+        "enabled":  true,
+        "downtimeCount":  1,
+        "internetAccess":  true
     }
 ]
