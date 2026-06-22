@@ -128,6 +128,13 @@
         "group":  "Infraestructura",
         "enabled":  true,
         "downtimeCount":  0,
-        "internetAccess":  false
+        "internetAccess":  false,
+        "isSwitch": true,
+        "snmpCommunity": "public",
+        "switchWebUrl": "http://192.168.40.125",
+        "switchUser": "admin",
+        "switchPass": "vtsa2015",
+        "switchPortsRJ45": 24,
+        "switchPortsSFP": 4
     }
 ]

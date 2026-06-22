@@ -255,6 +255,16 @@ while ($listener.IsListening) {
                                 downtimeCount  = 0
                                 internetAccess = $internetAccess
                             }
+                            # Add switch-specific fields if present
+                            if ($data.PSObject.Properties["isSwitch"] -and $data.isSwitch) {
+                                $newHost | Add-Member -MemberType NoteProperty -Name "isSwitch" -Value $true
+                                $newHost | Add-Member -MemberType NoteProperty -Name "snmpCommunity" -Value $(if ($data.snmpCommunity) { $data.snmpCommunity } else { "public" })
+                                $newHost | Add-Member -MemberType NoteProperty -Name "switchWebUrl" -Value $(if ($data.switchWebUrl) { $data.switchWebUrl } else { "http://$($data.ip.Trim())" })
+                                $newHost | Add-Member -MemberType NoteProperty -Name "switchUser" -Value $(if ($data.switchUser) { $data.switchUser } else { "admin" })
+                                $newHost | Add-Member -MemberType NoteProperty -Name "switchPass" -Value $(if ($data.switchPass) { $data.switchPass } else { "" })
+                                $newHost | Add-Member -MemberType NoteProperty -Name "switchPortsRJ45" -Value $(if ($data.switchPortsRJ45) { [int]$data.switchPortsRJ45 } else { 24 })
+                                $newHost | Add-Member -MemberType NoteProperty -Name "switchPortsSFP" -Value $(if ($data.switchPortsSFP) { [int]$data.switchPortsSFP } else { 4 })
+                            }
                             $list = [System.Collections.Generic.List[object]]::new()
                             foreach ($h in $hosts) { $list.Add($h) }
                             $list.Add($newHost)
@@ -400,6 +410,72 @@ while ($listener.IsListening) {
                     $f    = Join-Path $dataPath "history\$safe.json"
                     if (Test-Path $f) { Send-Json $resp (Get-Content $f -Raw) }
                     else              { Send-Json $resp "[]" }
+                }
+
+                { $_ -match "^/api/switch/ports" } {
+                    $switchIp   = $req.QueryString["ip"]
+                    $community  = $req.QueryString["community"]
+                    if (-not $community) { $community = "public" }
+                    if (-not $switchIp) {
+                        Send-Json $resp @{ error = "Falta parametro 'ip'" } 400
+                    } else {
+                        try {
+                            $scriptPath = Join-Path $BasePath "get_switch_ports.py"
+                            $proc = Start-Process -FilePath "python" `
+                                -ArgumentList "`"$scriptPath`" `"$switchIp`" `"$community`"" `
+                                -NoNewWindow -Wait -PassThru `
+                                -RedirectStandardOutput "$env:TEMP\nw_switch_out.txt" `
+                                -RedirectStandardError "$env:TEMP\nw_switch_err.txt"
+                            $output = Get-Content "$env:TEMP\nw_switch_out.txt" -Raw -ErrorAction SilentlyContinue
+                            if (-not $output -or $output.Trim() -eq "") {
+                                $errOut = Get-Content "$env:TEMP\nw_switch_err.txt" -Raw -ErrorAction SilentlyContinue
+                                Send-Json $resp @{ error = "Sin respuesta del script SNMP"; detail = $errOut } 500
+                            } else {
+                                # Enrich FDB entries with IP from ARP table
+                                try {
+                                    $switchData = $output | ConvertFrom-Json
+                                    if ($switchData.fdb) {
+                                        $arpRaw = & arp -a 2>&1
+                                        $macToIp = @{}
+                                        foreach ($line in $arpRaw) {
+                                            if ($line -match '(\d+\.\d+\.\d+\.\d+)\s+([\da-f]{2}[:-][\da-f]{2}[:-][\da-f]{2}[:-][\da-f]{2}[:-][\da-f]{2}[:-][\da-f]{2})') {
+                                                $arpIp  = $Matches[1]
+                                                $arpMac = $Matches[2].ToUpper().Replace('-',':')
+                                                $macToIp[$arpMac] = $arpIp
+                                            }
+                                        }
+                                        # Also look up host names from config
+                                        $hostsLookup = @{}
+                                        try {
+                                            $hostsList = Get-Hosts
+                                            foreach ($h in $hostsList) {
+                                                $hostsLookup[$h.ip] = $h.name
+                                            }
+                                        } catch {}
+                                        
+                                        foreach ($entry in $switchData.fdb) {
+                                            $mac = $entry.mac
+                                            if ($macToIp.ContainsKey($mac)) {
+                                                $entry | Add-Member -MemberType NoteProperty -Name "ip" -Value $macToIp[$mac] -Force
+                                                $resolvedIp = $macToIp[$mac]
+                                                if ($hostsLookup.ContainsKey($resolvedIp)) {
+                                                    $entry | Add-Member -MemberType NoteProperty -Name "hostname" -Value $hostsLookup[$resolvedIp] -Force
+                                                }
+                                            }
+                                        }
+                                        Send-Json $resp $switchData
+                                    } else {
+                                        Send-Json $resp $output
+                                    }
+                                } catch {
+                                    # If enrichment fails, return raw output
+                                    Send-Json $resp $output
+                                }
+                            }
+                        } catch {
+                            Send-Json $resp @{ error = "Error ejecutando script SNMP: $($_.Exception.Message)" } 500
+                        }
+                    }
                 }
 
                 default { Send-Json $resp @{ error = "Endpoint no encontrado" } 404 }

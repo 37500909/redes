@@ -40,6 +40,10 @@ function setupEventDelegation() {
     if (action === 'tracert') openTracert(ip, name);
     if (action === 'toggle')  toggleHost(ip, enabled);
     if (action === 'remove')  removeHost(ip, name);
+    if (action === 'switchports') {
+      const community = btn.dataset.community || 'public';
+      openSwitchPorts(ip, name, community);
+    }
   });
 }
 
@@ -351,6 +355,11 @@ function buildCard(host, globalInternetOnline, globalInternetLatency) {
               data-name="${escAttr(host.name)}">🔍 Diagnosticar</button>`
         : '<button class="card-btn tracert" style="opacity:0.3" disabled>🔍 Diagnosticar</button>'
       }
+      ${isSwitch(host) ? `<button class="card-btn tracert" style="background:rgba(168,85,247,0.1);color:var(--purple);border-color:rgba(168,85,247,0.25)"
+              data-action="switchports"
+              data-ip="${escAttr(host.ip)}"
+              data-name="${escAttr(host.name)}"
+              data-community="${escAttr(host.snmpCommunity || 'public')}">🔌 Puertos</button>` : ''}
       <button class="card-btn toggle"
               data-action="toggle"
               data-ip="${escAttr(host.ip)}"
@@ -731,6 +740,270 @@ function isValidIP(ip) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape')
-    ['addModal','bulkModal','tracertModal','manageModal','downtimesModal'].forEach(closeModal);
+    ['addModal','bulkModal','tracertModal','manageModal','downtimesModal','switchPortsModal','addSwitchModal'].forEach(closeModal);
   if (e.key === 'F5') { e.preventDefault(); refreshNow(); }
 });
+
+/* ─── SWITCH DETECTION ─── */
+function isSwitch(host) {
+  const nameLC = (host.name || '').toLowerCase();
+  const groupLC = (host.group || '').toLowerCase();
+  return nameLC.includes('switch') || (groupLC === 'infraestructura' && nameLC.includes('tl-'));
+}
+
+/* ─── SWITCH PORTS MODAL ─── */
+async function openSwitchPorts(ip, name, community) {
+  document.getElementById('switchPortsTitle').textContent = `🔌 ${name}`;
+  document.getElementById('switchPortsBody').innerHTML = `
+    <div style="text-align:center;padding:40px">
+      <div class="spinner"></div>
+      <p style="margin-top:12px;color:#8892a4">Consultando puertos del switch ${escHtml(ip)}...<br>
+      <small style="color:#4a5a72">Conectando via SNMP (comunidad: ${escHtml(community)})</small></p>
+    </div>`;
+  openModal('switchPortsModal');
+  try {
+    const data = await fetchJSON(`/api/switch/ports?ip=${encodeURIComponent(ip)}&community=${encodeURIComponent(community)}`);
+    if (data.error) {
+      renderSwitchError(ip, name, community, data.error);
+    } else {
+      renderSwitchPorts(data, ip, name);
+    }
+  } catch(e) {
+    renderSwitchError(ip, name, community, e.message);
+  }
+}
+
+function renderSwitchError(ip, name, community, errorMsg) {
+  // Find the switch config from hosts
+  const switchHost = hostsConfig.find(h => h.ip === ip);
+  const webUrl = switchHost && switchHost.switchWebUrl ? switchHost.switchWebUrl : `http://${ip}`;
+  const webUser = switchHost && switchHost.switchUser ? switchHost.switchUser : 'admin';
+  const webPass = switchHost && switchHost.switchPass ? switchHost.switchPass : '(configurada en el switch)';
+
+  document.getElementById('switchPortsBody').innerHTML = `
+    <div class="snmp-setup">
+      <div class="snmp-setup-title">⚠️ No se pudo conectar al switch por SNMP</div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+        Error: <code>${escHtml(errorMsg)}</code>
+      </p>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+        Para ver los puertos del switch, es necesario habilitar el protocolo <strong>SNMP v2c</strong> en la configuración del equipo.
+      </p>
+      <ol class="snmp-setup-steps">
+        <li>Abrí el navegador e ingresá a <a href="${escAttr(webUrl)}" target="_blank">${escHtml(webUrl)}</a></li>
+        <li>Iniciá sesión con usuario <code>${escHtml(webUser)}</code> y contraseña <code>${escHtml(webPass)}</code></li>
+        <li>Navegá a <strong>System → SNMP → SNMP Config</strong></li>
+        <li>Habilitá <strong>SNMP Agent: Enable</strong></li>
+        <li>En <strong>SNMP View</strong>, creá o verificá que existe una vista llamada <code>viewDefault</code> con OID <code>1</code> y tipo <code>Include</code></li>
+        <li>En <strong>SNMP Community</strong>, creá una comunidad con nombre <code>${escHtml(community)}</code>, acceso <code>Read-Only</code>, MIB View <code>viewDefault</code></li>
+        <li>Guardá los cambios y volvé a intentar</li>
+      </ol>
+      <button class="btn-primary" style="margin-top:16px" onclick="openSwitchPorts('${escAttr(ip)}','${escAttr(name)}','${escAttr(community)}')">🔄 Reintentar conexión</button>
+    </div>`;
+}
+
+function renderSwitchPorts(data, ip, name) {
+  const ports = data.ports || [];
+  const fdb = data.fdb || [];
+  const sysDescr = data.sysDescr || '';
+
+  // Build ifIndex -> list of FDB entries
+  const fdbByIfIndex = {};
+  fdb.forEach(entry => {
+    const idx = entry.ifIndex;
+    if (!fdbByIfIndex[idx]) fdbByIfIndex[idx] = [];
+    fdbByIfIndex[idx].push(entry);
+  });
+
+  // Separate RJ45 and SFP
+  const rj45Ports = ports.filter(p => p.type === 'rj45');
+  const sfpPorts = ports.filter(p => p.type === 'sfp');
+
+  const upCount = ports.filter(p => p.status === 'up').length;
+  const downCount = ports.filter(p => p.status === 'down').length;
+
+  // Build port elements
+  function buildPortEl(port) {
+    const stClass = port.status === 'up' ? 'port-up' : 'port-down';
+    const typeClass = port.type === 'sfp' ? 'port-sfp' : '';
+    const devices = fdbByIfIndex[port.ifIndex] || [];
+    const hasDevice = devices.length > 0;
+    const icon = port.type === 'sfp' ? '◇' : '▪';
+
+    let tooltipDevicesHtml = '';
+    if (devices.length > 0) {
+      tooltipDevicesHtml = devices.slice(0, 5).map(d => `
+        <div class="tt-device">
+          ${d.hostname ? `<div class="tt-device-name">${escHtml(d.hostname)}</div>` : ''}
+          ${d.ip ? `<div class="tt-device-ip">${escHtml(d.ip)}</div>` : ''}
+          <div class="tt-device-mac">${escHtml(d.mac)}</div>
+        </div>
+      `).join('');
+      if (devices.length > 5) {
+        tooltipDevicesHtml += `<div style="font-size:10px;color:var(--text-3);margin-top:4px">+${devices.length - 5} más...</div>`;
+      }
+    }
+
+    return `
+      <div class="switch-port ${stClass} ${typeClass}">
+        <span class="port-icon">${icon}</span>
+        <span class="port-num">${escHtml(port.portId)}</span>
+        <span class="port-speed">${port.status === 'up' ? escHtml(port.speed) : ''}</span>
+        ${hasDevice ? '<span class="port-connected-dot"></span>' : ''}
+        <div class="switch-port-tooltip">
+          <div class="tt-title">
+            <span>${port.status === 'up' ? '🟢' : '⚫'}</span>
+            Puerto ${escHtml(port.portId)} — ${escHtml(port.name)}
+          </div>
+          <div class="tt-row"><span>Estado</span><span class="tt-val">${port.status === 'up' ? 'Link Up' : 'Link Down'}</span></div>
+          <div class="tt-row"><span>Velocidad</span><span class="tt-val">${escHtml(port.speed)}</span></div>
+          <div class="tt-row"><span>Tipo</span><span class="tt-val">${port.type === 'sfp' ? 'SFP' : 'RJ45'}</span></div>
+          <div class="tt-row"><span>Dispositivos</span><span class="tt-val">${devices.length}</span></div>
+          ${tooltipDevicesHtml}
+        </div>
+      </div>`;
+  }
+
+  // Layout RJ45 as 2 rows: odd on top, even on bottom
+  const oddPorts = rj45Ports.filter((_, i) => i % 2 === 0); // 1,3,5...
+  const evenPorts = rj45Ports.filter((_, i) => i % 2 === 1); // 2,4,6...
+
+  const rj45Html = `
+    <div class="switch-section-label">Puertos RJ45 (1-${rj45Ports.length})</div>
+    <div class="switch-ports-rj45">
+      <div class="switch-port-row">${oddPorts.map(buildPortEl).join('')}</div>
+      <div class="switch-port-row">${evenPorts.map(buildPortEl).join('')}</div>
+    </div>`;
+
+  const sfpHtml = sfpPorts.length > 0 ? `
+    <div class="switch-section-label">Puertos SFP (${sfpPorts.map(p => p.portId).join(', ')})</div>
+    <div class="switch-ports-sfp">${sfpPorts.map(buildPortEl).join('')}</div>` : '';
+
+  // Build connected devices table
+  // Group all FDB entries by port, only show ports that have devices
+  const portDevices = [];
+  ports.forEach(port => {
+    const devices = fdbByIfIndex[port.ifIndex] || [];
+    devices.forEach(d => {
+      portDevices.push({ port, ...d });
+    });
+  });
+
+  // Sort: ports with known hosts first, then by port number
+  portDevices.sort((a, b) => {
+    if (a.hostname && !b.hostname) return -1;
+    if (!a.hostname && b.hostname) return 1;
+    const pa = parseInt(a.port.portId) || 99;
+    const pb = parseInt(b.port.portId) || 99;
+    return pa - pb;
+  });
+
+  let devicesTableHtml = '';
+  if (portDevices.length > 0) {
+    devicesTableHtml = `
+      <div class="switch-section-label" style="margin-top:20px">Dispositivos Conectados (${portDevices.length})</div>
+      <table class="switch-devices-table">
+        <thead>
+          <tr>
+            <th>Puerto</th>
+            <th>Dispositivo</th>
+            <th>IP</th>
+            <th>MAC</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${portDevices.map(d => `
+            <tr>
+              <td class="port-cell active">${escHtml(d.port.portId)}</td>
+              <td class="name-cell">${d.hostname ? escHtml(d.hostname) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td class="ip-cell">${d.ip ? escHtml(d.ip) : '<span style="color:var(--text-3)">—</span>'}</td>
+              <td class="mac-cell">${escHtml(d.mac)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } else {
+    devicesTableHtml = `
+      <div style="text-align:center;padding:16px;color:var(--text-3);font-size:13px;margin-top:12px">
+        No se encontraron dispositivos en la tabla MAC del switch.
+        <br><small>Asegurate de que SNMP esté habilitado con la comunidad correcta.</small>
+      </div>`;
+  }
+
+  document.getElementById('switchPortsBody').innerHTML = `
+    <div class="switch-chassis">
+      <div class="switch-model-info">
+        <div>
+          <div class="switch-model-name">🔌 ${escHtml(name)}</div>
+          <div class="switch-model-desc">${escHtml(sysDescr || ip)}</div>
+        </div>
+        <div class="switch-port-stats">
+          <span class="stat-up">● ${upCount} activos</span>
+          <span class="stat-down">○ ${downCount} inactivos</span>
+        </div>
+      </div>
+      ${rj45Html}
+      ${sfpHtml}
+    </div>
+    ${devicesTableHtml}`;
+}
+
+/* ─── ADD SWITCH MODAL ─── */
+function openAddSwitchModal() {
+  ['addSwitchIp','addSwitchName','addSwitchWebUrl','addSwitchUser','addSwitchPass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addSwitchCommunity').value = 'public';
+  document.getElementById('addSwitchPortsRJ45').value = '24';
+  document.getElementById('addSwitchPortsSFP').value = '4';
+  setModalMsg('addSwitchMsg', '', '');
+  openModal('addSwitchModal');
+  setTimeout(() => document.getElementById('addSwitchIp').focus(), 100);
+}
+
+async function submitAddSwitch() {
+  const ip        = document.getElementById('addSwitchIp').value.trim();
+  const name      = document.getElementById('addSwitchName').value.trim();
+  const community = document.getElementById('addSwitchCommunity').value.trim() || 'public';
+  const webUrl    = document.getElementById('addSwitchWebUrl').value.trim();
+  const webUser   = document.getElementById('addSwitchUser').value.trim();
+  const webPass   = document.getElementById('addSwitchPass').value.trim();
+  const portsRJ45 = parseInt(document.getElementById('addSwitchPortsRJ45').value) || 24;
+  const portsSFP  = parseInt(document.getElementById('addSwitchPortsSFP').value) || 4;
+
+  if (!ip || !isValidIP(ip)) {
+    setModalMsg('addSwitchMsg', 'Ingresá una IP válida para el switch.', 'error'); return;
+  }
+  if (!name) {
+    setModalMsg('addSwitchMsg', 'Ingresá un nombre para el switch.', 'error'); return;
+  }
+
+  const payload = {
+    ip,
+    name: name.includes('Switch') ? name : `Switch ${name}`,
+    group: 'Infraestructura',
+    enabled: true,
+    internetAccess: false,
+    snmpCommunity: community,
+    switchWebUrl: webUrl || `http://${ip}`,
+    switchUser: webUser || 'admin',
+    switchPass: webPass,
+    switchPortsRJ45: portsRJ45,
+    switchPortsSFP: portsSFP,
+    isSwitch: true
+  };
+
+  try {
+    const r = await fetchJSON('/api/hosts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (r.success) {
+      setModalMsg('addSwitchMsg', `✓ Switch ${ip} agregado correctamente.`, 'success');
+      setTimeout(() => { closeModal('addSwitchModal'); loadAll(); }, 1200);
+    } else {
+      setModalMsg('addSwitchMsg', r.error || 'Error al agregar el switch.', 'error');
+    }
+  } catch(e) {
+    setModalMsg('addSwitchMsg', 'Error de conexión.', 'error');
+  }
+}

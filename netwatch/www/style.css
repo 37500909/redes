@@ -534,3 +534,341 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ══════════════════════════════════════════
+   SWITCH PORT VISUALIZATION
+══════════════════════════════════════════ */
+.modal-switch { max-width: 840px; }
+
+.switch-chassis {
+  background: linear-gradient(180deg, #131f33 0%, #0d1a2d 100%);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin: 8px 0;
+  position: relative;
+  box-shadow:
+    0 0 30px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.switch-chassis::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+  border-radius: 16px 16px 0 0;
+  opacity: 0.6;
+}
+
+.switch-model-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.switch-model-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.switch-model-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.switch-port-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.switch-port-stats .stat-up { color: var(--green); }
+.switch-port-stats .stat-down { color: var(--text-3); }
+
+/* Port sections */
+.switch-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-3);
+  margin: 12px 0 8px;
+}
+
+/* RJ45 Ports Grid: 2 rows, top = odd, bottom = even */
+.switch-ports-rj45 {
+  display: grid;
+  gap: 6px;
+}
+.switch-port-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+/* SFP Ports */
+.switch-ports-sfp {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Individual port */
+.switch-port {
+  width: 52px;
+  min-height: 48px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.3);
+}
+.switch-port:hover {
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+.switch-port .port-num {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+.switch-port .port-speed {
+  font-size: 8px;
+  font-weight: 600;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+.switch-port .port-icon {
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+/* Port states */
+.switch-port.port-up {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.35);
+  color: var(--green);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+}
+.switch-port.port-up:hover {
+  background: rgba(0, 255, 136, 0.18);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+.switch-port.port-up .port-num { color: var(--green); }
+
+.switch-port.port-down {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.06);
+  color: var(--text-3);
+}
+.switch-port.port-down:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+}
+.switch-port.port-down .port-num { color: var(--text-3); }
+
+/* SFP ports are taller */
+.switch-port.port-sfp {
+  width: 56px;
+  min-height: 54px;
+  border-radius: 6px;
+  border-style: dashed;
+}
+
+/* Port has connected device badge */
+.switch-port .port-connected-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 4px var(--cyan);
+}
+
+/* Port tooltip */
+.switch-port-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2744;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 200px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.switch-port:hover .switch-port-tooltip {
+  display: block;
+  animation: tooltipFade 0.15s ease;
+}
+@keyframes tooltipFade { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+.switch-port-tooltip .tt-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.switch-port-tooltip .tt-row {
+  font-size: 11px;
+  color: var(--text-2);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.switch-port-tooltip .tt-row .tt-val {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyan);
+  font-weight: 500;
+}
+.switch-port-tooltip .tt-device {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.switch-port-tooltip .tt-device-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+}
+.switch-port-tooltip .tt-device-ip {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyan);
+}
+.switch-port-tooltip .tt-device-mac {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-3);
+}
+
+/* Connected devices table under switch chassis */
+.switch-devices-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+.switch-devices-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  border-bottom: 2px solid var(--card-border);
+  font-weight: 600;
+}
+.switch-devices-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.switch-devices-table tr:hover td {
+  background: rgba(255,255,255,0.03);
+}
+.switch-devices-table .port-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-align: center;
+  width: 50px;
+}
+.switch-devices-table .port-cell.active {
+  color: var(--green);
+}
+.switch-devices-table .mac-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.switch-devices-table .ip-cell {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyan);
+  font-weight: 500;
+}
+.switch-devices-table .name-cell {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+/* SNMP setup instructions */
+.snmp-setup {
+  background: rgba(255, 184, 0, 0.06);
+  border: 1px solid rgba(255, 184, 0, 0.2);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin: 12px 0;
+}
+.snmp-setup-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--amber);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.snmp-setup-steps {
+  list-style: none;
+  counter-reset: step;
+}
+.snmp-setup-steps li {
+  counter-increment: step;
+  padding: 10px 0 10px 42px;
+  position: relative;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.snmp-setup-steps li:last-child { border-bottom: none; }
+.snmp-setup-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0; top: 10px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,184,0,0.15);
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.snmp-setup-steps code {
+  background: rgba(0,0,0,0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--cyan);
+}
+.snmp-setup-steps a {
+  color: var(--cyan);
+  text-decoration: underline;
+  font-weight: 600;
+}
+

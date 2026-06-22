@@ -39,6 +39,7 @@
     <button class="btn-secondary" onclick="openDowntimesModal()">🗓️ Historial de Caídas</button>
     <button class="btn-secondary" onclick="openAddModal()">＋ Agregar IP</button>
     <button class="btn-secondary" onclick="openBulkModal()">⊞ Carga masiva</button>
+    <button class="btn-secondary" onclick="openAddSwitchModal()">🔌 Agregar Switch</button>
     <button class="btn-secondary danger" onclick="window.location='/api/logout'">Salir</button>
   </div>
 </header>
@@ -183,6 +184,72 @@
     <div class="modal-body" id="downtimesBody" style="max-height:400px;overflow-y:auto">
       <div style="text-align:center;padding:20px;color:var(--text-3)">Cargando historial...</div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: PUERTOS DEL SWITCH ═══════════════ -->
+<div class="modal-overlay" id="switchPortsModal" onclick="if(event.target===this)closeModal('switchPortsModal')">
+  <div class="modal modal-switch">
+    <div class="modal-header">
+      <h2 id="switchPortsTitle">🔌 Puertos del Switch</h2>
+      <button class="modal-close" onclick="closeModal('switchPortsModal')">✕</button>
+    </div>
+    <div class="modal-body" id="switchPortsBody" style="max-height:80vh;overflow-y:auto">
+      <div style="text-align:center;padding:40px">
+        <div class="spinner"></div>
+        <p style="margin-top:12px;color:#8892a4">Consultando puertos del switch...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: AGREGAR SWITCH ═══════════════ -->
+<div class="modal-overlay" id="addSwitchModal" onclick="if(event.target===this)closeModal('addSwitchModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔌 Agregar Switch Administrable</h2>
+      <button class="modal-close" onclick="closeModal('addSwitchModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Dirección IP del Switch *</label>
+        <input type="text" id="addSwitchIp" placeholder="192.168.40.125" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Nombre / Descripción *</label>
+        <input type="text" id="addSwitchName" placeholder="Switch Principal (TL-SG3428)" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Comunidad SNMP</label>
+        <input type="text" id="addSwitchCommunity" placeholder="public" class="form-input" value="public"/>
+      </div>
+      <div class="form-group">
+        <label>URL de Administración Web</label>
+        <input type="text" id="addSwitchWebUrl" placeholder="http://192.168.40.125" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Usuario Web</label>
+        <input type="text" id="addSwitchUser" placeholder="admin" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Contraseña Web</label>
+        <input type="password" id="addSwitchPass" placeholder="••••••" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Cantidad de Puertos RJ45</label>
+        <input type="number" id="addSwitchPortsRJ45" placeholder="24" class="form-input" value="24" min="1" max="52"/>
+      </div>
+      <div class="form-group">
+        <label>Cantidad de Puertos SFP</label>
+        <input type="number" id="addSwitchPortsSFP" placeholder="4" class="form-input" value="4" min="0" max="8"/>
+      </div>
+      <div class="modal-hint">Los campos con * son obligatorios. La comunidad SNMP debe coincidir con la configurada en el switch.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('addSwitchModal')">Cancelar</button>
+      <button class="btn-primary" onclick="submitAddSwitch()">Agregar Switch</button>
+    </div>
+    <div class="modal-msg" id="addSwitchMsg"></div>
   </div>
 </div>
 
