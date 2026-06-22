@@ -1,80 +1,87 @@
-﻿[
+[
     {
         "ip":  "192.168.41.44",
         "name":  "FortiGate Gateway",
         "group":  "Infraestructura",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.41.14",
         "name":  "DC-VTSA-01 (DNS/DHCP)",
         "group":  "Servidores",
         "enabled":  true,
-        "downtimeCount":  2
+        "downtimeCount":  3
     },
     {
         "ip":  "192.168.40.7",
         "name":  "DC-VTSA-02 (DNS/DHCP)",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.40.6",
         "name":  "Servidor Critico 1",
         "group":  "Servidores",
         "enabled":  true,
-        "downtimeCount":  2
+        "downtimeCount":  3
     },
     {
         "ip":  "192.168.41.12",
         "name":  "Servidor Critico 2",
         "group":  "Servidores",
         "enabled":  true,
-        "downtimeCount":  2
+        "downtimeCount":  3
     },
     {
         "ip":  "192.168.40.104",
         "name":  "Servidor Critico 3",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.41.26",
         "name":  "Servidor Critico 4",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.41.40",
         "name":  "Servidor 192.168.41.40",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "8.8.8.8",
         "name":  "Google DNS",
         "group":  "Internet",
         "enabled":  true,
-        "downtimeCount":  1
+        "downtimeCount":  5
     },
     {
         "ip":  "1.1.1.1",
         "name":  "Cloudflare DNS",
         "group":  "Internet",
         "enabled":  true,
-        "downtimeCount":  1
+        "downtimeCount":  5
     },
     {
         "ip":  "192.168.41.27",
         "name":  "Mario Guillen",
         "group":  "Maquinas",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.40.4",
         "name":  "host_virtuales",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  1
     },
     {
         "ip":  "192.168.41.161",
@@ -88,7 +95,7 @@
         "name":  "maquina_cascara",
         "group":  "Maquinas",
         "enabled":  true,
-        "downtimeCount":  1,
+        "downtimeCount":  2,
         "internetAccess":  null
     },
     {
@@ -96,7 +103,7 @@
         "name":  "pcs002a-pc",
         "group":  "Maquinas",
         "enabled":  true,
-        "downtimeCount":  0,
+        "downtimeCount":  1,
         "internetAccess":  null
     },
     {
@@ -104,7 +111,7 @@
         "name":  "Matias Salas",
         "group":  "Maquinas",
         "enabled":  true,
-        "downtimeCount":  0,
+        "downtimeCount":  1,
         "internetAccess":  null
     },
     {
@@ -112,7 +119,15 @@
         "name":  "Pasante_mantenimiento",
         "group":  "Maquinas",
         "enabled":  true,
-        "downtimeCount":  1,
+        "downtimeCount":  2,
         "internetAccess":  true
+    },
+    {
+        "ip":  "192.168.40.125",
+        "name":  "Switch Principal (TL-SG3428)",
+        "group":  "Infraestructura",
+        "enabled":  true,
+        "downtimeCount":  0,
+        "internetAccess":  false
     }
 ]
