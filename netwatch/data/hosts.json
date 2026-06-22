@@ -9,7 +9,8 @@
         "ip":  "192.168.41.14",
         "name":  "DC-VTSA-01 (DNS/DHCP)",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  2
     },
     {
         "ip":  "192.168.40.7",
@@ -21,13 +22,15 @@
         "ip":  "192.168.40.6",
         "name":  "Servidor Critico 1",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  2
     },
     {
         "ip":  "192.168.41.12",
         "name":  "Servidor Critico 2",
         "group":  "Servidores",
-        "enabled":  true
+        "enabled":  true,
+        "downtimeCount":  2
     },
     {
         "ip":  "192.168.40.104",
@@ -78,7 +81,7 @@
         "name":  "Guillermo Erbetta",
         "group":  "Maquinas",
         "enabled":  true,
-        "downtimeCount":  1
+        "downtimeCount":  2
     },
     {
         "ip":  "192.168.41.230",
